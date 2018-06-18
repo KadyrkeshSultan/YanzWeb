@@ -39,5 +39,12 @@ namespace Yanz.DAL.Repositories
         {
             return db.QuestionSets.Include(q => q.Questions).Where(q => q.FolderId == folderId);
         }
+
+        public async Task<IEnumerable<Folder>> GetRootFolderAsync(string userId)
+        {
+            return await db.Folders
+               .Where(f => f.ParentId == null && f.AppUserId == userId)
+               .ToListAsync();
+        }
     }
 }

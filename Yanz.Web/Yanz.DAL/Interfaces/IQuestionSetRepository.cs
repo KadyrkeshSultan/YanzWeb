@@ -15,5 +15,8 @@ namespace Yanz.DAL.Interfaces
         IEnumerable<QuestionSet> GetAllWithQuestions(string userId);
 
         Task<QuestionSet> GetWithQuestionsAsync(string id);
+        Task<QuestionSet> GetWithQuestionsNoTrackAsync(string id);
+
+        IEnumerable<QuestionSet> GetWithQstByFolder(string folderId);
     }
 }

@@ -31,6 +31,11 @@ namespace Yanz.DAL.Repositories
                 .OrderBy(o => o.Title);
         }
 
+        public IEnumerable<QuestionSet> GetWithQstByFolder(string folderId)
+        {
+            return db.QuestionSets.Include(q => q.Questions).Where(q => q.FolderId == folderId);
+        }
+
         public async Task<QuestionSet> GetWithQuestionsAsync(string id)
         {
             return await db.QuestionSets.FirstOrDefaultAsync(q => q.Id == id);
@@ -44,6 +49,11 @@ namespace Yanz.DAL.Repositories
         public async Task<QuestionSet> GetWithQuestionsNoTrackAsync(string userId, string id)
         {
             return await db.QuestionSets.AsNoTracking().FirstOrDefaultAsync(q => q.Id == id && q.AppUserId == userId);
+        }
+
+        public async Task<QuestionSet> GetWithQuestionsNoTrackAsync(string id)
+        {
+            return await db.QuestionSets.AsNoTracking().FirstOrDefaultAsync(q => q.Id == id);
         }
     }
 }
