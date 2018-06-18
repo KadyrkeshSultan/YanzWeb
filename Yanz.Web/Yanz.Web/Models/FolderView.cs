@@ -21,21 +21,5 @@ namespace Yanz.Web.Models
         {
 
         }
-        public FolderView(Folder folder)
-        {
-            if (folder != null)
-            {
-                Id = folder.Id;
-                Title = folder.Title;
-                ParentId = folder.ParentId;
-            }
-        }
-
-        public FolderView(Folder folder, List<Breadcrumb> breadcrumbs, List<Item> items)
-            : this(folder)
-        {
-            Breadcrumbs = breadcrumbs;
-            Items = items;
-        }
     }
 }

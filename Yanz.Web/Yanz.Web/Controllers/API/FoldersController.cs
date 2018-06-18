@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Yanz.DAL.Entities;
 using Yanz.DAL.Interfaces;
 using Yanz.Web.Models;
-using Yanz.Web.Services;
 
 namespace Yanz.Web.Controllers.API
 {
@@ -19,12 +17,12 @@ namespace Yanz.Web.Controllers.API
     public class FoldersController : ControllerBase
     {
         UserManager<AppUser> userManager;
-        FolderService service;
+        IUnitOfWork db; 
 
-        public FoldersController(FolderService service, UserManager<AppUser> manager)
+        public FoldersController(IUnitOfWork unit, UserManager<AppUser> manager)
         {
             userManager = manager;
-            this.service = service;
+            db = unit;
         }
 
         [HttpGet]
@@ -32,35 +30,8 @@ namespace Yanz.Web.Controllers.API
         [Route("root")]
         public async Task<IActionResult> Root()
         {
-            return Ok(await GetItemsAsync(null));
-        }
-
-        //TODO: поискать решение с partial Patch
-        [HttpPatch("{id}")]
-        [Authorize]
-        public async Task<IActionResult> Patch(string Id, [FromBody]FolderView folderView)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var userId = userManager.GetUserId(User);
-
-            Folder folder = await service.GetFolderAsync(userId, Id);
-
-            if (folder == null)
-                return NotFound(Id);
-
-            string moveResult = await service.MoveAsync(userId, Id, folderView.ParentId);
-            if (moveResult != null)
-                return BadRequest(moveResult);
-
-            string renameResult = await service.RenameAsync(userId, Id, folderView.Title);
-            if (renameResult != null)
-                return BadRequest(renameResult);
-
-            await service.SaveAsync();
-            FolderView view = new FolderView(folder, await GetBreadcrumbsAsync(folder.Id), await GetItemsAsync(folder.Id));
-            return Ok(view);
+            return Ok(await GetItemsAsync(userId, null));
         }
 
         [HttpGet("{id}")]
@@ -68,11 +39,18 @@ namespace Yanz.Web.Controllers.API
         public async Task<IActionResult> Get(string Id)
         {
             var userId = userManager.GetUserId(User);
-            Folder folder = await service.GetFolderAsync(userId, Id);
+            Folder folder = await db.Folders.GetAsync(userId, Id);
             if (folder == null)
                 return NotFound(Id);
 
-            FolderView view = new FolderView(folder, await GetBreadcrumbsAsync(folder.Id), await GetItemsAsync(folder.Id));
+            FolderView view = new FolderView()
+            {
+                Id = folder.Id,
+                Title = folder.Title,
+                ParentId = folder.ParentId,
+                Breadcrumbs = await GetBreadcrumbsAsync(userId, folder.Id),
+                Items = await GetItemsAsync(userId, folder.Id)
+            };
             return Ok(view);
         }
 
@@ -85,15 +63,30 @@ namespace Yanz.Web.Controllers.API
                 return BadRequest(ModelState);
 
             string userId = userManager.GetUserId(User);
-            string parentId = (await service.GetFolderAsync(userId, folder.ParentId))?.Id;
+            string parentId = (await db.Folders.GetAsync(userId, folder.ParentId))?.Id;
             if (folder.ParentId != "root" && parentId == null)
                 return BadRequest($"Not found folder {folder.ParentId}");
 
-            var nFolder = new Folder() { Title = folder.Title, AppUserId = userId, ParentId = parentId, Id = Guid.NewGuid().ToString() };
-            await service.AddAsync(nFolder);
-            await service.SaveAsync();
+            var nFolder = new Folder()
+            {
+                Title = folder.Title,
+                AppUserId = userId,
+                ParentId = parentId,
+                Id = Guid.NewGuid().ToString()
+            };
 
-            FolderView view = new FolderView(nFolder, await GetBreadcrumbsAsync(nFolder.Id), await GetItemsAsync(nFolder.Id));
+            await db.Folders.AddAsync(nFolder);
+            await db.SaveAsync();
+
+            FolderView view = new FolderView()
+            {
+                Id = nFolder.Id,
+                Title = nFolder.Title,
+                ParentId = nFolder.ParentId,
+                Breadcrumbs = await GetBreadcrumbsAsync(userId, nFolder.Id),
+                Items = await GetItemsAsync(userId, nFolder.Id)
+            };
+
             return Ok(view);
         }
 
@@ -102,11 +95,81 @@ namespace Yanz.Web.Controllers.API
         public async Task<IActionResult> Delete(string Id)
         {
             string userId = userManager.GetUserId(User);
-            bool onDelete = await service.RemoveAsync(userId, Id);
-            if (!onDelete)
-                return BadRequest(Id);
-            await service.SaveAsync();
+            var folder = await db.Folders.GetAsync(userId, Id);
+            if (folder == null)
+                return NotFound(Id);
+
+            var childFolders = new List<Folder>();
+
+            await GetChildFolder(userId, folder.Id, childFolders);
+
+            //Каскадное удаление QuestionSets. Подробнее в методе OnModelCreating
+            db.Folders.RemoveRange(childFolders);
+            db.Folders.Remove(folder);
+            await db.SaveAsync();
+
             return new StatusCodeResult(204);
+        }
+
+        [HttpPatch("{id}/move")]
+        [Authorize]
+        public async Task<IActionResult> Move(string Id, [FromBody]FolderView folderView)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = userManager.GetUserId(User);
+
+            var folder = await db.Folders.GetAsync(userId, Id);
+            if (folder == null)
+                return NotFound(Id);
+            var parentFolder = await db.Folders.GetAsync(userId, folderView.ParentId);
+            if (folderView.ParentId != "root" && parentFolder == null)
+                return NotFound(folderView.ParentId);
+            if (await IsSubFolderAsync(userId, Id, parentFolder?.Id))
+                return BadRequest($"Folder {parentFolder.Id} is subfolder {Id}");
+
+            folder.ParentId = parentFolder?.Id;
+            db.Folders.Update(folder);
+            await db.SaveAsync();
+            FolderView view = new FolderView()
+            {
+                Id = folder.Id,
+                Title = folder.Title,
+                ParentId = folder.ParentId,
+                Breadcrumbs = await GetBreadcrumbsAsync(userId, folder.Id),
+                Items = await GetItemsAsync(userId, folder.Id)
+            };
+            return Accepted(view);
+        }
+
+        [HttpPatch("{id}/rename")]
+        [Authorize]
+        public async Task<IActionResult> Rename(string Id, [FromBody]FolderView folderView)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = userManager.GetUserId(User);
+            var folder = await db.Folders.GetAsync(userId, Id);
+            if (folder == null)
+                return NotFound(Id);
+            if (string.IsNullOrEmpty(folderView.Title))
+                return BadRequest("Title length is less than 1");
+
+            folder.Title = folderView.Title;
+            db.Folders.Update(folder);
+            await db.SaveAsync();
+
+            FolderView view = new FolderView()
+            {
+                Id = folder.Id,
+                Title = folder.Title,
+                ParentId = folder.ParentId,
+                Breadcrumbs = await GetBreadcrumbsAsync(userId, folder.Id),
+                Items = await GetItemsAsync(userId, folder.Id)
+            };
+            return Accepted(view);
         }
 
         /// <summary>
@@ -114,19 +177,18 @@ namespace Yanz.Web.Controllers.API
         /// </summary>
         /// <param name="folderId">ID папки</param>
         /// <returns></returns>
-        private async Task<List<Item>> GetItemsAsync(string folderId)
+        private async Task<List<Item>> GetItemsAsync(string userId, string folderId)
         {
-            string userId = userManager.GetUserId(User);
-            var items = new List<Item>();
-            var listFolders = (await service.GetFoldersAsync(userId))
+            var listFolders = (await db.Folders.GetAllByUserAsync(userId))
                 .Where(f => f.ParentId == folderId)
                 .OrderBy(f => f.Title)
                 .ToList();
 
+            var items = new List<Item>();
             foreach (var folder in listFolders)
                 items.Add(new Item(folder));
 
-            var listQstSets = service.GetQuestionSets(folderId).OrderBy(q => q.Title).ToList();
+            var listQstSets = db.Folders.GetQuestionSets(folderId).OrderBy(q => q.Title).ToList();
 
             foreach (var qstSet in listQstSets)
                 items.Add(new Item(qstSet));
@@ -139,22 +201,55 @@ namespace Yanz.Web.Controllers.API
         /// </summary>
         /// <param name="folderId"></param>
         /// <returns></returns>
-        private async Task<List<Breadcrumb>> GetBreadcrumbsAsync(string folderId)
+        private async Task<List<Breadcrumb>> GetBreadcrumbsAsync(string userId, string folderId)
         {
             if (folderId == null)
                 return new List<Breadcrumb>();
 
-            string userId = userManager.GetUserId(User);
             var breadcrumbs = new List<Breadcrumb>();
-            Folder folder = await service.GetFolderAsync(userId, folderId);
-            Folder parentFolder = await service.GetFolderAsync(userId, folder.ParentId);
+            Folder folder = await db.Folders.GetAsync(userId, folderId);
+            Folder parentFolder = await db.Folders.GetAsync(userId, folder.ParentId);
             while (parentFolder != null)
             {
                 breadcrumbs.Add(new Breadcrumb(parentFolder));
-                parentFolder = await service.GetFolderAsync(userId, parentFolder.ParentId);
+                parentFolder = await db.Folders.GetAsync(userId, parentFolder.ParentId);
             }
             breadcrumbs.Reverse();
             return breadcrumbs;
+        }
+
+        /// <summary>
+        /// Получаем подпапки папки с folderId
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="folderId"></param>
+        /// <param name="childFolders">Список который содержит подпапки</param>
+        private async Task GetChildFolder(string userId, string folderId, List<Folder> childFolders)
+        {
+            var folders = await db.Folders.GetChildFoldersAsync(userId, folderId);
+            childFolders.AddRange(folders);
+            foreach (var folder in folders)
+                await GetChildFolder(userId, folder.Id, childFolders);
+        }
+
+        /// <summary>
+        /// Является ли папка в которую надо переместить - подпапкой
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="folderId">Id папки которую нужно переместить</param>
+        /// <param name="moveFolderId">Id папки в которую нужно переместить</param>
+        /// <returns></returns>
+        private async Task<bool> IsSubFolderAsync(string userId, string folderId, string moveFolderId)
+        {
+            //Если папка в которую нужно переместить, является корнем
+            if (moveFolderId == null)
+                return false;
+            var subFolders = new List<Folder>();
+            await GetChildFolder(userId, folderId, subFolders);
+            foreach (var folder in subFolders)
+                if (folder.Id == moveFolderId)
+                    return true;
+            return false;
         }
     }
 }

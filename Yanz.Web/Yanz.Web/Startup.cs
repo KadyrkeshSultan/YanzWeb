@@ -83,7 +83,6 @@ namespace Yanz.Web
 
             //services.AddScoped<IRepository<Folder>, FolderRepository>();
             services.AddScoped<IUnitOfWork, EFUnitOfWork>();
-            services.AddScoped<FolderService>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
