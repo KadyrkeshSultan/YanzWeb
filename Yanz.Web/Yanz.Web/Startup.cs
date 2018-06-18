@@ -18,6 +18,7 @@ using Yanz.DAL.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Yanz.Web.Services;
 
 namespace Yanz.Web
 {
@@ -82,6 +83,7 @@ namespace Yanz.Web
 
             //services.AddScoped<IRepository<Folder>, FolderRepository>();
             services.AddScoped<IUnitOfWork, EFUnitOfWork>();
+            services.AddScoped<FolderService>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 

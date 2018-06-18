@@ -38,22 +38,22 @@ namespace Yanz.DAL.Repositories
 
         public async Task<QuestionSet> GetWithQuestionsAsync(string id)
         {
-            return await db.QuestionSets.FirstOrDefaultAsync(q => q.Id == id);
+            return await db.QuestionSets.Include(q => q.Questions).FirstOrDefaultAsync(q => q.Id == id);
         }
 
         public async Task<QuestionSet> GetWithQuestionsAsync(string userId, string id)
         {
-            return await db.QuestionSets.FirstOrDefaultAsync(q => q.Id == id && q.AppUserId == userId);
+            return await db.QuestionSets.Include(q => q.Questions).FirstOrDefaultAsync(q => q.Id == id && q.AppUserId == userId);
         }
 
         public async Task<QuestionSet> GetWithQuestionsNoTrackAsync(string userId, string id)
         {
-            return await db.QuestionSets.AsNoTracking().FirstOrDefaultAsync(q => q.Id == id && q.AppUserId == userId);
+            return await db.QuestionSets.AsNoTracking().Include(q => q.Questions).FirstOrDefaultAsync(q => q.Id == id && q.AppUserId == userId);
         }
 
         public async Task<QuestionSet> GetWithQuestionsNoTrackAsync(string id)
         {
-            return await db.QuestionSets.AsNoTracking().FirstOrDefaultAsync(q => q.Id == id);
+            return await db.QuestionSets.AsNoTracking().Include(q => q.Questions).FirstOrDefaultAsync(q => q.Id == id);
         }
     }
 }
