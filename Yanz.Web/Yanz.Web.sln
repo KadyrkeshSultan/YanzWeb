@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27703.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yanz.Web", "Yanz.Web\Yanz.Web.csproj", "{B7D8C01A-969A-4DE0-9A58-EF0BACB88318}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yanz.DAL", "Yanz.DAL\Yanz.DAL.csproj", "{4DFF5EF4-D6E9-45D1-BD68-A4451D8D843E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{B7D8C01A-969A-4DE0-9A58-EF0BACB88318}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7D8C01A-969A-4DE0-9A58-EF0BACB88318}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7D8C01A-969A-4DE0-9A58-EF0BACB88318}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DFF5EF4-D6E9-45D1-BD68-A4451D8D843E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DFF5EF4-D6E9-45D1-BD68-A4451D8D843E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DFF5EF4-D6E9-45D1-BD68-A4451D8D843E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DFF5EF4-D6E9-45D1-BD68-A4451D8D843E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

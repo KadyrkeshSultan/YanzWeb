@@ -9,9 +9,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Yanz.Web.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Yanz.DAL.EF;
+using Yanz.DAL.Entities;
+using Yanz.DAL.Interfaces;
+using Yanz.DAL.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace Yanz.Web
 {
@@ -34,12 +40,48 @@ namespace Yanz.Web
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddDbContext<ApplicationDbContext>(options =>
+            services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
-            services.AddDefaultIdentity<IdentityUser>()
-                .AddEntityFrameworkStores<ApplicationDbContext>();
+                    Configuration.GetConnectionString("DefaultConnection"), b => b.MigrationsAssembly("Yanz.DAL")));
+            services.AddDefaultIdentity<AppUser>(opts =>
+            {
+                opts.Password.RequiredLength = 6;
+                opts.Password.RequireNonAlphanumeric = false;   // требуются ли не алфавитно-цифровые символы
+                opts.Password.RequireLowercase = false; // требуются ли символы в нижнем регистре
+                opts.Password.RequireUppercase = false; // требуются ли символы в верхнем регистре
+                opts.Password.RequireDigit = true; // требуются ли цифры
+            })
+            .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<AppDbContext>();
 
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddCookie()
+                    .AddJwtBearer(options =>
+                    {
+                        options.RequireHttpsMetadata = false;
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            // укзывает, будет ли валидироваться издатель при валидации токена
+                            ValidateIssuer = true,
+                            // строка, представляющая издателя
+                            ValidIssuer = AuthOptions.ISSUER,
+
+                            // будет ли валидироваться потребитель токена
+                            ValidateAudience = true,
+                            // установка потребителя токена
+                            ValidAudience = AuthOptions.AUDIENCE,
+                            // будет ли валидироваться время существования
+                            ValidateLifetime = true,
+
+                            // установка ключа безопасности
+                            IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),
+                            // валидация ключа безопасности
+                            ValidateIssuerSigningKey = true,
+                        };
+                    });
+
+            //services.AddScoped<IRepository<Folder>, FolderRepository>();
+            services.AddScoped<IUnitOfWork, EFUnitOfWork>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
