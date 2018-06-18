@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Yanz.DAL\Yanz.DAL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Areas\Identity\Services\" />
+  </ItemGroup>
+
 </Project>
