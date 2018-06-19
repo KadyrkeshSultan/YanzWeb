@@ -113,7 +113,7 @@ namespace Yanz.Web.Controllers.API
 
         [HttpPatch("{id}/move")]
         [Authorize]
-        public async Task<IActionResult> Move(string Id, [FromBody]FolderView folderView)
+        public async Task<IActionResult> Move(string Id, [FromBody]string moveFolderId)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -123,9 +123,11 @@ namespace Yanz.Web.Controllers.API
             var folder = await db.Folders.GetAsync(userId, Id);
             if (folder == null)
                 return NotFound(Id);
-            var parentFolder = await db.Folders.GetAsync(userId, folderView.ParentId);
-            if (folderView.ParentId != "root" && parentFolder == null)
-                return NotFound(folderView.ParentId);
+            var parentFolder = await db.Folders.GetAsync(userId, moveFolderId);
+
+            if (moveFolderId != "root" && parentFolder == null)
+                return NotFound(moveFolderId);
+
             if (await IsSubFolderAsync(userId, Id, parentFolder?.Id))
                 return BadRequest($"Folder {parentFolder.Id} is subfolder {Id}");
 
@@ -145,7 +147,7 @@ namespace Yanz.Web.Controllers.API
 
         [HttpPatch("{id}/rename")]
         [Authorize]
-        public async Task<IActionResult> Rename(string Id, [FromBody]FolderView folderView)
+        public async Task<IActionResult> Rename(string Id, [FromBody]string titleNew)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -154,10 +156,10 @@ namespace Yanz.Web.Controllers.API
             var folder = await db.Folders.GetAsync(userId, Id);
             if (folder == null)
                 return NotFound(Id);
-            if (string.IsNullOrEmpty(folderView.Title))
+            if (string.IsNullOrEmpty(titleNew))
                 return BadRequest("Title length is less than 1");
 
-            folder.Title = folderView.Title;
+            folder.Title = titleNew;
             db.Folders.Update(folder);
             await db.SaveAsync();
 
