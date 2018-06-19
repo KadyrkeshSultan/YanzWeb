@@ -17,23 +17,23 @@ namespace Yanz.DAL.Repositories
 
         }
 
-        public IEnumerable<QuestionSet> GetAllWithQuestions(string userId)
+        public async Task<IEnumerable<QuestionSet>> GetAllWithQuestions(string userId)
         {
-            return db.QuestionSets.Include(q => q.Questions).Where(q => q.AppUserId == userId).OrderBy(o => o.Title);
+            return await db.QuestionSets.Include(q => q.Questions).Where(q => q.AppUserId == userId).OrderBy(o => o.Title).ToListAsync();
         }
 
-        public IEnumerable<QuestionSet> GetAllWithQuestionsNoTrack(string userId)
+        public async Task<IEnumerable<QuestionSet>> GetAllWithQuestionsNoTrack(string userId)
         {
-            return db.QuestionSets
+            return await db.QuestionSets
                 .AsNoTracking()
                 .Include(q => q.Questions)
                 .Where(q => q.AppUserId == userId)
-                .OrderBy(o => o.Title);
+                .OrderBy(o => o.Title).ToListAsync();
         }
 
-        public IEnumerable<QuestionSet> GetWithQstByFolder(string folderId)
+        public async Task<IEnumerable<QuestionSet>> GetWithQstByFolder(string folderId)
         {
-            return db.QuestionSets.Include(q => q.Questions).Where(q => q.FolderId == folderId);
+            return await db.QuestionSets.Include(q => q.Questions).Where(q => q.FolderId == folderId).ToListAsync();
         }
 
         public async Task<QuestionSet> GetWithQuestionsAsync(string id)

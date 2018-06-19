@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,10 +32,20 @@ namespace Yanz.Web.Controllers.API
         public async Task<IActionResult> Get()
         {
             var user = await userManager.GetUserAsync(User);
-            var sets = db.QuestionSets.GetAllWithQuestionsNoTrack(user.Id);
-            List<QuestionSetView> views = new List<QuestionSetView>();
-            foreach (var set in sets)
-                views.Add(new QuestionSetView(set, user.UserName, await GetBreadcrumbsAsync(set.Id)));
+            var sets = await db.QuestionSets.GetAllWithQuestionsNoTrack(user.Id);
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<QuestionSet, QuestionSetView>()
+                   .ForMember("Owner", opt => opt.UseValue<string>(user.UserName));
+            }).CreateMapper();
+
+            var views = mapper.Map<IEnumerable<QuestionSet>, List<QuestionSetView>>(sets);
+            foreach (var set in views)
+            {
+                set.Breadcrumbs = await GetBreadcrumbsAsync(set.Id);
+                set.Questions = set.Questions.OrderBy(q => q.Order).ToList();
+            }
+            
             return Ok(views);
         }
 
@@ -45,8 +57,8 @@ namespace Yanz.Web.Controllers.API
             QuestionSet set = await db.QuestionSets.GetWithQuestionsNoTrackAsync(Id);
             if (set == null)
                 return NotFound(Id);
-            //set.Questions = set.Questions.OrderBy(q => q.Order).ToList();
-            QuestionSetView view = new QuestionSetView(set, user.UserName, await GetBreadcrumbsAsync(Id));
+
+            QuestionSetView view = await QuestionToView(user.UserName, set);
             return Ok(view);
         }
 
@@ -79,8 +91,9 @@ namespace Yanz.Web.Controllers.API
 
             await db.QuestionSets.AddAsync(questionSet);
             await db.SaveAsync();
-            QuestionSetView view = new QuestionSetView(questionSet, user.UserName, await GetBreadcrumbsAsync(questionSet.Id));
-            return Ok(view);
+
+            QuestionSetView view = await QuestionToView(user.UserName, questionSet);
+            return Accepted(view);
         }
 
         [HttpPost("{id}/associate")]
@@ -185,8 +198,9 @@ namespace Yanz.Web.Controllers.API
             db.QuestionSets.Update(questionSet);
             await db.SaveAsync();
 
-            QuestionSetView view = new QuestionSetView(questionSet,User.Identity.Name ,await GetBreadcrumbsAsync(questionSet.Id));
-            return Ok(view);
+            var user = await userManager.GetUserAsync(User);
+            QuestionSetView view = await QuestionToView(user.UserName, questionSet);
+            return Accepted(view);
         }
 
         [HttpDelete("{id}")]
@@ -206,7 +220,6 @@ namespace Yanz.Web.Controllers.API
             if (setId == null)
                 return new List<Breadcrumb>();
 
-            var userId = userManager.GetUserId(User);
             var breadcrumbs = new List<Breadcrumb>();
             QuestionSet set = await db.QuestionSets.GetAsync(setId);
             Folder parentFolder = await db.Folders.GetAsync(set.FolderId);
@@ -217,6 +230,26 @@ namespace Yanz.Web.Controllers.API
             }
             breadcrumbs.Reverse();
             return breadcrumbs;
+        }
+
+        /// <summary>
+        /// Mapper QuestionSet to QuestionSetView, with questions
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="questionSet"></param>
+        /// <returns></returns>
+        private async Task<QuestionSetView> QuestionToView(string userName, QuestionSet questionSet)
+        {
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<QuestionSet, QuestionSetView>()
+                   .ForMember("Owner", opt => opt.UseValue<string>(userName));
+            }).CreateMapper();
+
+            QuestionSetView view = mapper.Map<QuestionSet, QuestionSetView>(questionSet);
+            view.Breadcrumbs = await GetBreadcrumbsAsync(view.Id);
+            view.Questions = view.Questions.OrderBy(q => q.Order).ToList();
+            return view;
         }
     }
 }

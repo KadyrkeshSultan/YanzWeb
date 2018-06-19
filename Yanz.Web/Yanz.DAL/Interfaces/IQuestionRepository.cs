@@ -10,5 +10,6 @@ namespace Yanz.DAL.Interfaces
     {
         Task<Question> GetWithChoices(string id);
         Task<IEnumerable<Question>> GetWithChoicesByQuestionSet(string questionSetId);
+        Task<IEnumerable<Question>> GetByQuestionSet(string questionSetId);
     }
 }

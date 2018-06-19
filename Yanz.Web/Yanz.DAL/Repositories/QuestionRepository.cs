@@ -16,6 +16,11 @@ namespace Yanz.DAL.Repositories
 
         }
 
+        public async Task<IEnumerable<Question>> GetByQuestionSet(string questionSetId)
+        {
+            return await db.Questions.Where(q => q.QuestionSetId == questionSetId).ToListAsync();
+        }
+
         public async Task<Question> GetWithChoices(string id)
         {
             return await db.Questions.Include(q => q.Choices).FirstOrDefaultAsync(f => f.Id == id);
