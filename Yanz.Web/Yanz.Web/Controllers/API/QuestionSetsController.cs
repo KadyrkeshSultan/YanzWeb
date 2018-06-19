@@ -93,7 +93,7 @@ namespace Yanz.Web.Controllers.API
             await db.SaveAsync();
 
             QuestionSetView view = await QuestionToView(user.UserName, questionSet);
-            return Accepted(view);
+            return CreatedAtAction("Get", new { id = view.Id }, view);
         }
 
         [HttpPost("{id}/associate")]
@@ -200,7 +200,7 @@ namespace Yanz.Web.Controllers.API
 
             var user = await userManager.GetUserAsync(User);
             QuestionSetView view = await QuestionToView(user.UserName, questionSet);
-            return Accepted(view);
+            return Ok(view);
         }
 
         [HttpDelete("{id}")]
@@ -212,7 +212,7 @@ namespace Yanz.Web.Controllers.API
                 return NotFound(Id);
             db.QuestionSets.Remove(set);
             await db.SaveAsync();
-            return new StatusCodeResult(204);
+            return NoContent();
         }
 
         private async Task<List<Breadcrumb>> GetBreadcrumbsAsync(string setId)

@@ -87,7 +87,7 @@ namespace Yanz.Web.Controllers.API
                 Items = await GetItemsAsync(userId, nFolder.Id)
             };
 
-            return Ok(view);
+            return CreatedAtAction("Get", new { id = view.Id }, view);
         }
 
         [HttpDelete("{id}")]
@@ -108,7 +108,7 @@ namespace Yanz.Web.Controllers.API
             db.Folders.Remove(folder);
             await db.SaveAsync();
 
-            return new StatusCodeResult(204);
+            return NoContent();
         }
 
         [HttpPatch("{id}/move")]
@@ -142,7 +142,7 @@ namespace Yanz.Web.Controllers.API
                 Breadcrumbs = await GetBreadcrumbsAsync(userId, folder.Id),
                 Items = await GetItemsAsync(userId, folder.Id)
             };
-            return Accepted(view);
+            return Ok(view);
         }
 
         [HttpPatch("{id}/rename")]
@@ -171,7 +171,7 @@ namespace Yanz.Web.Controllers.API
                 Breadcrumbs = await GetBreadcrumbsAsync(userId, folder.Id),
                 Items = await GetItemsAsync(userId, folder.Id)
             };
-            return Accepted(view);
+            return Ok(view);
         }
 
         /// <summary>

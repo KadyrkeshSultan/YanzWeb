@@ -104,7 +104,7 @@ namespace Yanz.Controllers.API
             }).CreateMapper();
 
             QuestionView view = mapper.Map<Question, QuestionView>(qst);
-            return Ok(view);
+            return CreatedAtAction("Get", new { id = view.Id }, Ok(view));
         }
 
         // POST: api/Questions
