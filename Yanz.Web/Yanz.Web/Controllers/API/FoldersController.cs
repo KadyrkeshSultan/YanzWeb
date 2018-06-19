@@ -113,7 +113,7 @@ namespace Yanz.Web.Controllers.API
 
         [HttpPatch("{id}/move")]
         [Authorize]
-        public async Task<IActionResult> Move(string Id, [FromBody]string moveFolderId)
+        public async Task<IActionResult> Move(string Id, string moveFolderId)
         {
             if (Id == moveFolderId)
                 return BadRequest("Сan not be moved to the same folder");
@@ -146,7 +146,7 @@ namespace Yanz.Web.Controllers.API
 
         [HttpPatch("{id}/rename")]
         [Authorize]
-        public async Task<IActionResult> Rename(string Id, [FromBody]string titleNew)
+        public async Task<IActionResult> Rename(string Id, string titleNew)
         {
             if (string.IsNullOrEmpty(titleNew))
                 return BadRequest("Title length is less than 1");

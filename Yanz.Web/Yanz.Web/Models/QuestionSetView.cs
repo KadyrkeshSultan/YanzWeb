@@ -30,7 +30,6 @@ namespace Yanz.Web.Models
         /// </summary>
         public string Image { get; set; }
 
-        [Required]
         public string FolderId { get; set; }
         public System.Collections.Generic.List<Breadcrumb> Breadcrumbs { get; set; }
 

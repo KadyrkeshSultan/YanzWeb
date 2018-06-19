@@ -18,14 +18,5 @@ namespace Yanz.Web.Models
         {
 
         }
-
-        public ChoiceView(Choice choice)
-        {
-            Id = choice.Id;
-            Image = choice.Image;
-            Order = choice.Order;
-            IsCorrect = choice.IsCorrect;
-            Content = choice.Content;
-        }
     }
 }

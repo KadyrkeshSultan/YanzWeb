@@ -96,9 +96,15 @@ namespace Yanz.Web.Controllers.API
             return CreatedAtAction("Get", new { id = view.Id }, view);
         }
 
+        /// <summary>
+        /// Переместить в questionSet with ID
+        /// </summary>
+        /// <param name="id">QuestionSet Id</param>
+        /// <param name="qsts"></param>
+        /// <returns></returns>
         [HttpPost("{id}/associate")]
         [Authorize]
-        public async Task<IActionResult> Associate(string id, string[] qsts)
+        public async Task<IActionResult> Associate(string id, [FromBody]RAQuestionsView[] qsts)
         {
             var set = await db.QuestionSets.GetAsync(id);
             if (set == null)
@@ -106,9 +112,9 @@ namespace Yanz.Web.Controllers.API
             List<Question> questions = new List<Question>();
             foreach (var quest in qsts)
             {
-                var q = await db.Questions.GetAsync(quest);
+                var q = await db.Questions.GetAsync(quest.Id);
                 if (q == null)
-                    return BadRequest(quest);
+                    return NotFound(quest.Id);
                 q.QuestionSetId = set.Id;
                 questions.Add(q);
             }
@@ -120,7 +126,7 @@ namespace Yanz.Web.Controllers.API
 
         [HttpPost("{id}/reorder")]
         [Authorize]
-        public async Task<IActionResult> Reorder(string id, string[] qsts)
+        public async Task<IActionResult> Reorder(string id, [FromBody]RAQuestionsView[] qsts)
         {
             var set = await db.QuestionSets.GetAsync(id);
             if (set == null)
@@ -130,9 +136,9 @@ namespace Yanz.Web.Controllers.API
             int order = 0;
             foreach (var quest in qsts)
             {
-                var q = await db.Questions.GetAsync(quest);
+                var q = await db.Questions.GetAsync(quest.Id);
                 if (q == null)
-                    return BadRequest(quest);
+                    return NotFound(quest.Id);
                 q.Order = order;
                 questions.Add(q);
                 order++;
@@ -173,6 +179,29 @@ namespace Yanz.Web.Controllers.API
             return Ok(msg);
         }
 
+        [HttpPost("{id}/move")]
+        [Authorize]
+        public async Task<IActionResult> Move(string Id, string moveFolderId)
+        {
+            QuestionSet questionSet = await db.QuestionSets.GetWithQuestionsAsync(Id);
+
+            if (questionSet == null)
+                return NotFound(Id);
+
+            Folder folder = await db.Folders.GetAsync(moveFolderId);
+            if (moveFolderId != "root" && folder == null)
+                return BadRequest($"Not found folder {moveFolderId}");
+
+            questionSet.FolderId = folder?.Id;
+
+            db.QuestionSets.Update(questionSet);
+            await db.SaveAsync();
+
+            var user = await userManager.GetUserAsync(User);
+            QuestionSetView view = await QuestionToView(user.UserName, questionSet);
+            return Ok(view);
+        }
+
         [HttpPatch("{id}")]
         [Authorize]
         public async Task<IActionResult> Patch(string Id, [FromBody]QuestionSetView set)
@@ -184,13 +213,7 @@ namespace Yanz.Web.Controllers.API
 
             if (questionSet == null)
                 return NotFound(Id);
-            Folder folder = await db.Folders.GetAsync(set.FolderId);
-            if (set.FolderId != "root" && folder == null)
-                return BadRequest($"Not found folder {set.FolderId}");
-
-            //Опасная зона
-            set.FolderId = folder?.Id;
-            questionSet.FolderId = set.FolderId;
+            
             questionSet.Title = set.Title;
             questionSet.Image = set.Image;
             questionSet.Desc = set.Desc;
