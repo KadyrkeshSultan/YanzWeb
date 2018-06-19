@@ -115,9 +115,8 @@ namespace Yanz.Web.Controllers.API
         [Authorize]
         public async Task<IActionResult> Move(string Id, [FromBody]string moveFolderId)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
+            if (Id == moveFolderId)
+                return BadRequest("Сan not be moved to the same folder");
             var userId = userManager.GetUserId(User);
 
             var folder = await db.Folders.GetAsync(userId, Id);
@@ -149,15 +148,12 @@ namespace Yanz.Web.Controllers.API
         [Authorize]
         public async Task<IActionResult> Rename(string Id, [FromBody]string titleNew)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
+            if (string.IsNullOrEmpty(titleNew))
+                return BadRequest("Title length is less than 1");
             var userId = userManager.GetUserId(User);
             var folder = await db.Folders.GetAsync(userId, Id);
             if (folder == null)
                 return NotFound(Id);
-            if (string.IsNullOrEmpty(titleNew))
-                return BadRequest("Title length is less than 1");
 
             folder.Title = titleNew;
             db.Folders.Update(folder);
@@ -243,6 +239,9 @@ namespace Yanz.Web.Controllers.API
         /// <returns></returns>
         private async Task<bool> IsSubFolderAsync(string userId, string folderId, string moveFolderId)
         {
+            //Если перемещение в ту же папку
+            if (folderId == moveFolderId)
+                return true;
             //Если папка в которую нужно переместить, является корнем
             if (moveFolderId == null)
                 return false;
