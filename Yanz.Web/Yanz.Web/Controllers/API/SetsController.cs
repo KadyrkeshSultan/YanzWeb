@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -27,11 +28,16 @@ namespace Yanz.Controllers.API
         [Authorize]
         public async Task<IActionResult> GetMyPublicSetsAsync()
         {
-            var userId = userManager.GetUserId(User);
-            var sets = await db.Sets.GetAllWithQuestions(userId);
-            List<SetView> views = new List<SetView>();
-            foreach (var s in sets)
-                views.Add(new SetView(s, User.Identity.Name));
+            var user = await userManager.GetUserAsync(User);
+            var sets = await db.Sets.GetAllWithQuestions(user.Id);
+
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Set, SetView>()
+                .ForMember("Owner", opt => opt.UseValue(user.UserName));
+            }).CreateMapper();
+
+            List<SetView> views = mapper.Map<IEnumerable<Set>, List<SetView>>(sets);
             return Ok(views);
         }
 
@@ -52,7 +58,7 @@ namespace Yanz.Controllers.API
                 return NotFound(id);
             db.Sets.Remove(set);
             await db.SaveAsync();
-            return new StatusCodeResult(204);
+            return NoContent();
         }
     }
 }

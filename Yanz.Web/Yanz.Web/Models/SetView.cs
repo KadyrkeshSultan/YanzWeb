@@ -32,23 +32,5 @@ namespace Yanz.Web.Models
         {
 
         }
-
-        public SetView(Set set, string userName)
-        {
-            Id = set.Id;
-            Created = set.Created;
-            Desc = set.Desc;
-            Image = set.Image;
-            Owner = userName;
-            Questions = GetQuestionViews(set.Questions);
-        }
-
-        private List<QuestionView> GetQuestionViews(List<Question> questions)
-        {
-            var listQuestionView = new List<QuestionView>();
-            foreach (var qst in questions.OrderBy(q => q.Order))
-                listQuestionView.Add(new QuestionView(qst));
-            return listQuestionView;
-        }
     }
 }

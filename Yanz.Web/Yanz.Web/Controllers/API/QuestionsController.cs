@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ namespace Yanz.Controllers.API
         IUnitOfWork db;
         UserManager<AppUser> userManager;
         readonly string[] kinds = { "choice", "multiple", "text", "sorter" };
+        readonly int MaxQuestionCount = 30;
 
         public QuestionsController(IUnitOfWork _db, UserManager<AppUser> _userManager)
         {
@@ -34,7 +36,12 @@ namespace Yanz.Controllers.API
             if (qst == null)
                 return NotFound();
             qst.Choices = qst.Choices.OrderBy(c => c.Order).ToList();
-            QuestionView view = new QuestionView(qst);
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Question, QuestionView>();
+            }).CreateMapper();
+
+            QuestionView view = mapper.Map<Question, QuestionView>(qst);
             return Ok(view);
         }
 
@@ -52,8 +59,9 @@ namespace Yanz.Controllers.API
             var set = await db.QuestionSets.GetWithQuestionsAsync(question.QuestionSetId);
             if (set == null)
                 return NotFound(question.QuestionSetId);
-            if (set.Questions.Count >= 30)
-                return BadRequest("Max 30 questions in set");
+
+            if (set.Questions.Count >= MaxQuestionCount)
+                return BadRequest($"Max {MaxQuestionCount} questions in set");
 
             List<Choice> choices = new List<Choice>();
             if (question.Kind != "text")
@@ -88,14 +96,20 @@ namespace Yanz.Controllers.API
             };
             db.Questions.Add(qst);
             await db.SaveAsync();
-            QuestionView view = new QuestionView(qst);
-            //TODO: сделать Pacth, копию в sessionChoice
+
+
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Question, QuestionView>();
+            }).CreateMapper();
+
+            QuestionView view = mapper.Map<Question, QuestionView>(qst);
             return Ok(view);
         }
 
         // POST: api/Questions
-        [HttpPost("{id}")]
-        public async Task<IActionResult> Post(string id, [FromBody]QuestionView question)
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> Patch(string id, [FromBody]QuestionView question)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -111,8 +125,10 @@ namespace Yanz.Controllers.API
             var set = await db.QuestionSets.GetWithQuestionsAsync(question.QuestionSetId);
             if (set == null)
                 return NotFound(question.QuestionSetId);
-            if (set.Questions.Count >= 30 && quest.QuestionSetId != question.QuestionSetId)
-                return BadRequest("Max 30 questions in set");
+
+            if (set.Questions.Count >= MaxQuestionCount && quest.QuestionSetId != question.QuestionSetId)
+                return BadRequest($"Max {MaxQuestionCount} questions in set");
+            //Удаляем старые
             db.Choices.RemoveRange(quest.Choices);
 
             List<Choice> choices = new List<Choice>();
@@ -129,7 +145,6 @@ namespace Yanz.Controllers.API
 
             Question nQuestion = new Question()
             {
-                Id = Guid.NewGuid().ToString(),
                 Title = question.Title,
                 Image = question.Image,
                 IsPoll = false,
@@ -150,7 +165,12 @@ namespace Yanz.Controllers.API
             db.Questions.Update(quest);
             await db.SaveAsync();
 
-            QuestionView view = new QuestionView(quest);
+            var mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Question, QuestionView>();
+            }).CreateMapper();
+
+            QuestionView view = mapper.Map<Question, QuestionView>(quest);
             return Ok(view);
         }
 
@@ -200,7 +220,7 @@ namespace Yanz.Controllers.API
 
             db.Questions.Remove(qst);
             await db.SaveAsync();
-            return new StatusCodeResult(204);
+            return NoContent();
         }
     }
 }

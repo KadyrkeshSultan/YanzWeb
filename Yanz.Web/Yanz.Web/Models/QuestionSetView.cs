@@ -42,33 +42,5 @@ namespace Yanz.Web.Models
         {
 
         }
-        public QuestionSetView(QuestionSet set, string userName)
-        {
-            if (set != null)
-            {
-                Id = set.Id;
-                Owner = userName;
-                Title = set.Title;
-                Desc = set.Desc;
-                Created = set.Created;
-                Questions = GetQuestionViews(set.Questions);
-                FolderId = set.FolderId;
-                Image = set.Image;
-            }
-        }
-
-        public QuestionSetView(QuestionSet set, string userName, List<Breadcrumb> breadcrumbs)
-            : this(set, userName)
-        {
-            Breadcrumbs = breadcrumbs;
-        }
-
-        private List<QuestionView> GetQuestionViews(List<Question> questions)
-        {
-            var listQuestionView = new List<QuestionView>();
-            foreach (var qst in questions.OrderBy(q => q.Order))
-                listQuestionView.Add(new QuestionView(qst));
-            return listQuestionView;
-        }
     }
 }

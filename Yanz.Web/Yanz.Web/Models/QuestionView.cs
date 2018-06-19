@@ -37,29 +37,5 @@ namespace Yanz.Web.Models
         {
             Weight = 1;
         }
-
-        public QuestionView(Question qst)
-        {
-            if (qst != null)
-            {
-                Id = qst.Id;
-                Title = qst.Title;
-                Content = qst.Content;
-                Kind = qst.Kind;
-                Image = qst.Image;
-                Modified = qst.Modified;
-                Created = qst.Created;
-                QuestionSetId = qst.QuestionSetId;
-                Explanation = qst.Explanation;
-                IsTrueCorrect = qst.IsTrueCorrect;
-                Weight = qst.Weight;
-                IsPoll = qst.IsPoll;
-                Order = qst.Order;
-                Choices = new List<ChoiceView>();
-                if (qst.Choices != null)
-                    foreach (var c in qst.Choices)
-                        Choices.Add(new ChoiceView(c));
-            }
-        }
     }
 }
